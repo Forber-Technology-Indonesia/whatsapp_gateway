@@ -35,9 +35,9 @@ pipeline {
             steps {
                 script {
                     try {
-                        sh 'docker rmi wawebApi-free'
+                        sh 'docker rmi wawebapi-free'
                     } catch (Exception e) {
-                        echo "Image wawebApi-free could not be removed: ${e}"
+                        echo "Image wawebapi-free could not be removed: ${e}"
                     }
                 }
             }
@@ -45,13 +45,13 @@ pipeline {
         stage('Build Docker New Image') {
             steps {
                 dir('whatsapp_gateway') {
-                    sh 'docker build -t wawebApi-free .'
+                    sh 'docker build -t wawebapi-free .'
                 }
             }
         }
         stage('Run New Container') {
             steps {
-                sh 'docker run -d --name node4  -p 3001:3001 wawebApi-free'
+                sh 'docker run -d --name node4  -p 3001:3001 wawebapi-free'
             }
         }
     }
