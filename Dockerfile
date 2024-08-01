@@ -7,15 +7,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Create app directory
 WORKDIR /usr/src/app
-COPY . .
 
 # Install app dependencies
 # COPY /node-glints/package*.json ./
 # COPY /waweb-api/package*.json ./
 COPY package*.json ./
-RUN npm install
-
-WORKDIR /usr/src/app/node_modules/puppeteer
 RUN npm install
 
 # Install dependencies
@@ -44,15 +40,14 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Puppeteer
-# RUN npm install puppeteer
+RUN npm install puppeteer
 
 # RUN cd node_modules/puppeteer
 # RUN npm install
 # Bundle app source
 # COPY /node-glints/. .
 # COPY /waweb-api/. .
-
-
+COPY . .
 
 # Expose the Node.js app port
 EXPOSE 3001
