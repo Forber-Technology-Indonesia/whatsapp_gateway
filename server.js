@@ -13,7 +13,7 @@ const http = require('http');
 // }
 
 // initial instance
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 3001;
 const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
