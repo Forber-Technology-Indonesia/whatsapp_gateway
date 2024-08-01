@@ -25,5 +25,5 @@ COPY . .
 EXPOSE 3001
 
 # Start SSH and the Node.js app
-CMD service ssh start && npm start
+CMD  npm start
 
