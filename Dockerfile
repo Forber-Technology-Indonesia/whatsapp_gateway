@@ -47,6 +47,14 @@ RUN npm install puppeteer
 # Bundle app source
 # COPY /node-glints/. .
 # COPY /waweb-api/. .
+# Change to Puppeteer's directory to ensure it gets its dependencies
+WORKDIR /usr/src/app/node_modules/puppeteer
+RUN npm install
+
+# Change back to the main app directory
+WORKDIR /usr/src/app
+
+# Bundle app source
 COPY . .
 
 # Expose the Node.js app port
