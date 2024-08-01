@@ -13,8 +13,7 @@ WORKDIR /usr/src/app
 # COPY /waweb-api/package*.json ./
 COPY package*.json ./
 RUN npm install
-# RUN cd node_modules/puppeteer
-# RUN npm install
+
 # Install dependencies
 RUN apt-get update && apt-get install -y \
     ca-certificates \
@@ -41,12 +40,17 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Puppeteer
-RUN npm install puppeteer
+# RUN npm install puppeteer
 
+# RUN cd node_modules/puppeteer
+# RUN npm install
 # Bundle app source
 # COPY /node-glints/. .
 # COPY /waweb-api/. .
 COPY . .
+
+WORKDIR /usr/src/app/node_modules/puppeteer
+RUN npm install
 
 # Expose the Node.js app port
 EXPOSE 3001
