@@ -17,7 +17,12 @@ const PORT = process.env.PORT || 3001;
 const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
-const client = new Client();
+// const client = new Client();
+const client = new Client({
+    puppeteer: {
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    }
+});
 // const client = new Client({
 //     // authStrategy: new LocalAuth({
 //     //     // clientId: '6288271014182'
