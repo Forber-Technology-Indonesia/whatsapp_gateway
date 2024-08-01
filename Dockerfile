@@ -5,9 +5,6 @@ FROM node:latest
 ENV DEBIAN_FRONTEND=noninteractive
 
 
-# Expose SSH port
-EXPOSE 22
-
 # Create app directory
 WORKDIR /usr/src/app
 
