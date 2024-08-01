@@ -13,7 +13,7 @@ WORKDIR /usr/src/app
 # COPY /waweb-api/package*.json ./
 COPY package*.json ./
 RUN npm install
-RUN cd ./node_modules/puppeteer
+RUN cd node_modules/puppeteer
 RUN npm install
 
 # Bundle app source
