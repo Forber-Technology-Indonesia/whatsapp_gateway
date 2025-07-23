@@ -1,15 +1,35 @@
-const { Client } = require('whatsapp-web.js');
+const { Client, LocalAuth } = require('whatsapp-web.js');
 const express = require('express');
 const qrcode = require('qrcode');
 const socketIO = require('socket.io');
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 
 const PORT = process.env.PORT || 3001;
 const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
 
+// Session file path
+const sessionPath = path.join(__dirname, 'session.json');
+
+// Load existing session if available
+let sessionData = null;
+if (fs.existsSync(sessionPath)) {
+    try {
+        sessionData = JSON.parse(fs.readFileSync(sessionPath, 'utf8'));
+        console.log('Session data loaded from file');
+    } catch (err) {
+        console.log('Failed to load session data:', err);
+    }
+}
+
 const client = new Client({
+    authStrategy: new LocalAuth({
+        clientId: "whatsapp-gateway",
+        dataPath: path.join(__dirname, '.wwebjs_auth')
+    }),
     puppeteer: {
         args: ['--no-sandbox', '--disable-setuid-sandbox']
     }
@@ -61,6 +81,25 @@ client.on('message', msg => {
 client.on('ready', async () => {
     console.log('WhatsApp client is ready!');
     
+    // Save session data when client is ready
+    const clientInfo = client.info;
+    const sessionInfo = {
+        timestamp: new Date().toISOString(),
+        clientId: "whatsapp-gateway",
+        connected: true,
+        phoneNumber: clientInfo ? clientInfo.wid.user : 'unknown',
+        platform: clientInfo ? clientInfo.platform : 'unknown',
+        lastConnected: new Date().toISOString()
+    };
+    
+    try {
+        fs.writeFileSync(sessionPath, JSON.stringify(sessionInfo, null, 2));
+        console.log('Session info saved to', sessionPath);
+        console.log('Session info:', JSON.stringify(sessionInfo, null, 2));
+    } catch (err) {
+        console.error('Failed to save session info:', err);
+    }
+    
     // Only send auto message if it hasn't been sent yet
     if (!autoMessageSent) {
         setTimeout(async () => {
@@ -74,6 +113,39 @@ client.on('ready', async () => {
                 console.error('Gagal mengirim pesan otomatis:', err);
             }
         }, 5000);
+    }
+});
+
+// Handle authentication
+client.on('authenticated', () => {
+    console.log('Client authenticated successfully');
+});
+
+// Handle authentication failure
+client.on('auth_failure', msg => {
+    console.error('Authentication failed:', msg);
+    // Remove session file if authentication fails
+    if (fs.existsSync(sessionPath)) {
+        fs.unlinkSync(sessionPath);
+        console.log('Session file removed due to auth failure');
+    }
+});
+
+// Handle disconnection
+client.on('disconnected', (reason) => {
+    console.log('Client disconnected:', reason);
+    // Update session file to mark as disconnected
+    if (fs.existsSync(sessionPath)) {
+        try {
+            const sessionInfo = JSON.parse(fs.readFileSync(sessionPath, 'utf8'));
+            sessionInfo.connected = false;
+            sessionInfo.lastDisconnected = new Date().toISOString();
+            sessionInfo.disconnectReason = reason;
+            fs.writeFileSync(sessionPath, JSON.stringify(sessionInfo, null, 2));
+            console.log('Session updated with disconnect info');
+        } catch (err) {
+            console.error('Failed to update session on disconnect:', err);
+        }
     }
 });
 
@@ -93,6 +165,15 @@ io.on('connection', (socket) => {
 
     client.on('ready', () => {
         socket.emit('message', `${now} WhatsApp is ready!`);
+        // Emit session status to client
+        if (fs.existsSync(sessionPath)) {
+            try {
+                const sessionInfo = JSON.parse(fs.readFileSync(sessionPath, 'utf8'));
+                socket.emit('sessionInfo', sessionInfo);
+            } catch (err) {
+                console.error('Failed to read session for socket:', err);
+            }
+        }
     });
 
     client.on('auth_failure', () => {
@@ -163,6 +244,72 @@ app.get('/getmessage', (req, res) => {
         });
 });
 
+// Get session info endpoint
+app.get('/session', (req, res) => {
+    if (fs.existsSync(sessionPath)) {
+        try {
+            const sessionInfo = JSON.parse(fs.readFileSync(sessionPath, 'utf8'));
+            res.status(200).json({
+                error: false,
+                data: {
+                    message: 'Session info',
+                    meta: sessionInfo,
+                },
+            });
+        } catch (err) {
+            res.status(500).json({
+                error: true,
+                data: {
+                    message: 'Error reading session',
+                    meta: err.message,
+                },
+            });
+        }
+    } else {
+        res.status(404).json({
+            error: true,
+            data: {
+                message: 'No session found',
+                meta: null,
+            },
+        });
+    }
+});
+
+// Clear session endpoint
+app.delete('/session', (req, res) => {
+    try {
+        if (fs.existsSync(sessionPath)) {
+            fs.unlinkSync(sessionPath);
+        }
+        // Also remove auth data directory
+        const authPath = path.join(__dirname, '.wwebjs_auth');
+        if (fs.existsSync(authPath)) {
+            fs.rmSync(authPath, { recursive: true, force: true });
+        }
+        res.status(200).json({
+            error: false,
+            data: {
+                message: 'Session cleared successfully',
+                meta: null,
+            },
+        });
+    } catch (err) {
+        res.status(500).json({
+            error: true,
+            data: {
+                message: 'Error clearing session',
+                meta: err.message,
+            },
+        });
+    }
+});
+
 server.listen(PORT, () => {
     console.log('App listen on port', PORT);
+    if (sessionData) {
+        console.log('Previous session found, attempting auto-reconnect...');
+    } else {
+        console.log('No previous session found, QR scan will be required');
+    }
 });
